@@ -81,3 +81,8 @@ The browser dashboard never embeds the administrator token in its static files. 
 - LOCAL_AUTH_ADMIN_TOKEN: high-entropy administrator bearer token. The admin API fails closed when this value is unset.
 
 Do not put either value in the Android APK, JavaScript bundle, or a public configuration file.
+
+
+## Dashboard reverse proxy
+
+The dashboard container proxies requests under `/v1/` to `SIGNAL_SERVER_UPSTREAM` using Nginx. In the browser, set the Server URL to the dashboard's own HTTPS origin (not the backend container address). This is intentional: the static UI and API then share an origin and the Signal server does not need broad CORS headers.
