@@ -14,7 +14,7 @@
       <div>
         <div class="eyebrow">LOCAL LAN ADMINISTRATION</div>
         <h1>مدیریت کاربران و دستگاه‌ها</h1>
-        <p class="muted">ثبت و لغو مجوز دستگاه‌هایی که اجازه ورود به پیام‌رسان داخلی را دارند.</p>
+        <p class="muted">ثبت دستگاه‌های از پیش مجاز، لغو دسترسی و مشاهده رویدادهای احراز هویت.</p>
       </div>
       <span class="badge">شبکه محلی</span>
     </header>
@@ -23,30 +23,30 @@
       <div class="panel-heading">
         <div>
           <h2 id="connection-title">اتصال امن به سرور</h2>
-          <p class="muted">نشانی API و توکن مدیریتی فقط در نشست فعلی مرورگر نگهداری می‌شوند.</p>
+          <p class="muted">توکن مدیریتی فقط در نشست فعلی مرورگر نگهداری می‌شود.</p>
         </div>
         <span id="connection-status" class="status status-idle">متصل نیست</span>
       </div>
       <form id="connection-form" class="grid connection-grid">
-        <label>نشانی سرور
-          <input id="api-base" type="url" placeholder="https://signal-server.lan" autocomplete="url" required>
+        <label>نشانی داشبورد / API
+          <input id="api-base" type="url" placeholder="https://dashboard.messenger.lan" autocomplete="url" required>
         </label>
-        <label>توکن مدیریتی
-          <input id="admin-token" type="password" placeholder="توکن تعریف‌شده در localDeviceAuth.adminApiToken" autocomplete="off" required>
+        <label>توکن مدیریتی سرور
+          <input id="admin-token" type="password" placeholder="LOCAL_AUTH_ADMIN_TOKEN" autocomplete="off" required>
         </label>
         <div class="actions align-end">
           <button class="button primary" type="submit">اتصال و بارگذاری</button>
           <button class="button secondary" id="disconnect-button" type="button">پاک‌کردن اطلاعات</button>
         </div>
       </form>
-      <div class="notice">این داشبورد را فقط روی شبکه مدیریت داخلی و پشت HTTPS در دسترس قرار دهید. توکن مدیریتی را در فایل‌های وب، مخزن Git یا تنظیمات عمومی قرار ندهید.</div>
+      <div class="notice">این داشبورد را فقط در VLAN مدیریت و پشت HTTPS منتشر کنید. توکن مدیریتی را در فایل‌های وب، مخزن Git یا APK قرار ندهید.</div>
     </section>
 
     <section class="panel" aria-labelledby="enroll-title">
       <div class="panel-heading">
         <div>
           <h2 id="enroll-title">ثبت دستگاه مجاز</h2>
-          <p class="muted">شماره باید با قالب بین‌المللی E.164 وارد شود؛ مانند ‎+4915112345678.</p>
+          <p class="muted">شماره با قالب E.164 و کلید عمومی X.509 از نوع EC P-256 لازم است.</p>
         </div>
       </div>
       <form id="enroll-form" class="grid enroll-grid">
@@ -56,25 +56,27 @@
         <label>Android ID
           <input id="android-id" type="text" spellcheck="false" autocomplete="off" placeholder="شناسه Android دستگاه" required>
         </label>
-        <label class="checkbox-label">
-          <input id="device-enabled" type="checkbox" checked>
-          دستگاه پس از ثبت فعال باشد
+        <label>نام دستگاه (اختیاری)
+          <input id="device-name" type="text" maxlength="100" placeholder="مثلاً گوشی انبار">
+        </label>
+        <label class="full-width">کلید عمومی دستگاه (Base64 X.509)
+          <textarea id="public-key" rows="3" spellcheck="false" autocomplete="off" placeholder="کلید عمومی تولیدشده توسط Android Keystore را اینجا وارد کنید" required></textarea>
         </label>
         <div class="actions align-end">
           <button class="button primary" type="submit">ثبت دستگاه</button>
         </div>
       </form>
-      <p class="help">Android ID مانند رمز عبور محرمانه نیست و قابل جعل یا تغییر است. این سامانه آن را به‌صورت HMAC در دیتابیس ذخیره می‌کند؛ برای امنیت قوی‌تر باید احراز مالکیت با کلید Android Keystore نیز به جریان کلاینت و سرور اضافه و کلید عمومی در زمان enrollment ثبت شود.</p>
+      <p class="help">کلید خصوصی باید فقط در Android Keystore باقی بماند. فقط کلید عمومی را از دستگاه دریافت و ثبت کنید. Android ID شناسه کمکی enrollment است، نه راز امنیتی.</p>
     </section>
 
     <section class="panel" aria-labelledby="devices-title">
       <div class="panel-heading devices-heading">
         <div>
-          <h2 id="devices-title">فهرست دستگاه‌های مجاز</h2>
-          <p class="muted"><span id="device-count">۰</span> دستگاه ثبت‌شده</p>
+          <h2 id="devices-title">دستگاه‌های مجاز</h2>
+          <p class="muted"><span id="device-count">۰</span> دستگاه در صفحه فعلی</p>
         </div>
         <div class="toolbar">
-          <input id="search-input" type="search" placeholder="جستجو بر اساس شماره..." aria-label="جستجوی شماره">
+          <input id="search-input" type="search" placeholder="جستجو شماره / شناسه..." aria-label="جستجوی دستگاه">
           <button class="button secondary" id="refresh-button" type="button">بازخوانی</button>
         </div>
       </div>
@@ -83,21 +85,42 @@
         <table>
           <thead>
             <tr>
-              <th>شماره</th>
-              <th>شناسه دستگاه (هش‌شده)</th>
-              <th>تاریخ ثبت</th>
+              <th>کاربر / دستگاه</th>
+              <th>شماره تلفن</th>
+              <th>Android ID</th>
+              <th>آخرین فعالیت</th>
               <th>وضعیت</th>
               <th>عملیات</th>
             </tr>
           </thead>
           <tbody id="device-rows">
-            <tr><td colspan="5" class="empty">برای مشاهده دستگاه‌ها به سرور متصل شوید.</td></tr>
+            <tr><td colspan="6" class="empty">برای مشاهده دستگاه‌ها به سرور متصل شوید.</td></tr>
           </tbody>
+        </table>
+      </div>
+      <div class="pagination">
+        <span id="page-caption" class="muted">—</span>
+        <button class="button secondary" id="load-more-button" type="button" disabled>بارگذاری صفحه بعد</button>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="events-title">
+      <div class="panel-heading">
+        <div>
+          <h2 id="events-title">رویدادهای امنیتی اخیر</h2>
+          <p class="muted">تلاش‌های ورود، امضای نامعتبر، صدور کد و ابطال مجوز.</p>
+        </div>
+        <button class="button secondary" id="events-refresh-button" type="button">بازخوانی رویدادها</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>زمان</th><th>رویداد</th><th>شماره</th><th>Android ID</th><th>نتیجه</th></tr></thead>
+          <tbody id="event-rows"><tr><td colspan="5" class="empty">رویدادی بارگذاری نشده است.</td></tr></tbody>
         </table>
       </div>
     </section>
 
-    <footer class="footer">Signal Local Dashboard · دسترسی مدیریتی را محدود و لاگ‌های سرور را به‌صورت دوره‌ای بررسی کنید.</footer>
+    <footer class="footer">Signal Local Dashboard · دسترسی مدیریتی را محدود کنید و لاگ‌ها را دوره‌ای بررسی کنید.</footer>
   </main>
 </body>
 </html>
