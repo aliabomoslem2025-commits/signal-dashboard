@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' https: http://127.0.0.1:*; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'">
+  <title>Signal LAN — Administration</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script defer src="./app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">PRIVATE LAN CONTROL PLANE</p>
+      <h1>Signal Administration</h1>
+      <p class="muted">Pre-authorize users and device keys. This console must remain on the trusted LAN.</p>
+    </div>
+    <div class="status"><span id="statusDot"></span><span id="statusText">Not connected</span></div>
+  </header>
+
+  <main>
+    <section class="panel connection">
+      <div class="section-heading"><div><p class="eyebrow">CONNECTION</p><h2>Server access</h2></div></div>
+      <div class="grid two">
+        <label>Local Auth API base URL
+          <input id="apiBase" type="url" placeholder="https://messenger.lan">
+        </label>
+        <label>Administrator bearer token
+          <input id="adminToken" type="password" autocomplete="off" placeholder="Paste the LAN admin token">
+        </label>
+      </div>
+      <div class="actions">
+        <button id="connectBtn" class="primary">Connect & load users</button>
+        <button id="clearTokenBtn" class="quiet">Clear token from this session</button>
+      </div>
+      <p class="help">The token is kept in this browser tab's session storage only. Use HTTPS and never paste the token into a shared computer.</p>
+    </section>
+
+    <div class="layout">
+      <section class="panel">
+        <div class="section-heading"><div><p class="eyebrow">DIRECTORY</p><h2>Users</h2></div><button id="refreshUsersBtn" class="quiet small">Refresh</button></div>
+        <form id="userForm" class="form-stack">
+          <label>Phone number (E.164)<input id="phone" type="tel" placeholder="+4915112345678" required pattern="\+[1-9][0-9]{7,14}"></label>
+          <label>Display name<input id="displayName" type="text" maxlength="120" placeholder="Employee or member name"></label>
+          <button class="primary" type="submit">Create / enable user</button>
+        </form>
+        <div id="users" class="list empty">Connect to load authorized users.</div>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading"><div><p class="eyebrow">DEVICE ENROLLMENT</p><h2 id="deviceTitle">Select a user</h2></div></div>
+        <div id="deviceContent" class="empty">Choose a user on the left to inspect or enroll devices.</div>
+      </section>
+    </div>
+
+    <section class="panel warning">
+      <p class="eyebrow">SECURITY NOTICE</p>
+      <p><strong>Android ID is not an authenticator.</strong> Login is permitted only when the phone number and Android ID match a pre-enrolled device and the device proves possession of its Android Keystore private key. Never enroll a device using an unverified public key from an untrusted source.</p>
+      <p class="muted">This dashboard controls the Local Device Authentication service. It does not replace the Signal server's account-registration adapter or the Android app integration by itself.</p>
+    </section>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  </main>
+  <footer>Signal LAN Administration · Keep this interface private · <span id="year"></span></footer>
+</body>
+</html>
