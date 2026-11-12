@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Signal LAN Admin</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div><div class="eyebrow">PRIVATE NETWORK CONTROL</div><h1>Signal LAN Admin</h1></div>
+    <div class="connection"><span id="connectionDot" class="dot"></span><span id="connectionLabel">Not connected</span></div>
+  </header>
+  <main class="shell">
+    <section class="panel">
+      <div class="panel-heading"><div><h2>Server connection</h2><p>Connect to the local Signal server. The admin token is held only for this browser session.</p></div></div>
+      <form id="connectionForm" class="connection-form">
+        <label class="grow">Server URL<input id="serverUrl" type="url" placeholder="https://messenger.lan" required autocomplete="url"></label>
+        <label class="grow">Admin bearer token<input id="adminToken" type="password" placeholder="LOCAL_AUTH_ADMIN_TOKEN" required autocomplete="current-password"></label>
+        <button class="primary" type="submit">Connect</button>
+      </form>
+      <div id="connectionMessage" class="message" role="status"></div>
+    </section>
+    <section class="stats">
+      <article class="stat-card"><span>Registered devices</span><strong id="deviceCount">—</strong></article>
+      <article class="stat-card"><span>Latest security event</span><strong id="latestEvent">—</strong></article>
+      <article class="stat-card"><span>Environment</span><strong>LAN</strong></article>
+    </section>
+    <section class="panel">
+      <div class="panel-heading responsive-heading">
+        <div><h2>Authorized devices</h2><p>A device is authorized by its phone number, Android ID, and Android Keystore public key.</p></div>
+        <div class="toolbar"><input id="deviceSearch" type="search" placeholder="Search phone, Android ID, name"><button id="refreshButton" class="secondary" type="button">Refresh</button></div>
+      </div>
+      <form id="deviceForm" class="device-form">
+        <h3>Authorize a device</h3>
+        <div class="form-grid">
+          <label>Phone number (E.164)<input id="phoneNumber" type="tel" placeholder="+491234567890" required pattern="\\+[1-9][0-9]{7,14}"></label>
+          <label>Android ID<input id="androidId" type="text" placeholder="Android ID" maxlength="128" required></label>
+          <label>Device name<input id="displayName" type="text" placeholder="Optional device name" maxlength="100"></label>
+        </div>
+        <label>Public key (Base64-encoded X.509 EC P-256)<textarea id="publicKey" rows="3" spellcheck="false" required placeholder="Paste the public key exported by the Android app"></textarea></label>
+        <div class="form-actions"><button class="primary" type="submit">Authorize device</button><span class="hint">The private key must remain on the Android device. Never paste or upload a private key here.</span></div>
+      </form>
+      <div class="table-wrap"><table><thead><tr><th>Phone</th><th>Device</th><th>Android ID</th><th>Public key fingerprint</th><th>Status</th><th>Actions</th></tr></thead><tbody id="deviceRows"><tr><td colspan="6" class="empty">Connect to the server to load devices.</td></tr></tbody></table></div>
+      <div class="pagination"><span id="paginationLabel"></span><button id="loadMoreButton" class="secondary" type="button" disabled>Load more</button></div>
+    </section>
+    <section class="panel">
+      <div class="panel-heading"><div><h2>Recent security events</h2><p>Authentication successes, failures, device additions, updates, and revocations.</p></div><button id="refreshEventsButton" class="secondary" type="button">Refresh events</button></div>
+      <div class="table-wrap"><table><thead><tr><th>Time</th><th>Event</th><th>Phone</th><th>Android ID</th><th>Result</th></tr></thead><tbody id="eventRows"><tr><td colspan="5" class="empty">No events loaded.</td></tr></tbody></table></div>
+    </section>
+    <footer>Keep this dashboard and its API on a trusted LAN/VPN. Use HTTPS with a private CA trusted by managed devices.</footer>
+  </main>
+  <dialog id="confirmDialog"><form method="dialog" class="dialog-body"><h2 id="dialogTitle">Confirm action</h2><p id="dialogText"></p><div class="dialog-actions"><button class="secondary" value="cancel">Cancel</button><button id="dialogConfirm" class="danger" value="confirm">Confirm</button></div></form></dialog>
+  <script src="./app.js" defer></script>
+</body>
+</html>
