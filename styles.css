@@ -26,7 +26,14 @@ input[type="url"], input[type="tel"], input[type="text"], input[type="password"]
   width: 100%; min-width: 0; height: 44px; border: 1px solid #d6dee8; border-radius: 10px;
   padding: 0 13px; color: #17212b; background: #fff; outline: none; direction: ltr; text-align: left;
 }
-input:focus { border-color: #2689d8; box-shadow: 0 0 0 3px rgba(38, 137, 216, .13); }
+input:focus, textarea:focus { border-color: #2689d8; box-shadow: 0 0 0 3px rgba(38, 137, 216, .13); }
+textarea {
+  width: 100%; min-width: 0; resize: vertical; border: 1px solid #d6dee8; border-radius: 10px;
+  padding: 12px 13px; color: #17212b; background: #fff; outline: none; direction: ltr; text-align: left;
+  font: 12px/1.7 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.full-width { grid-column: 1 / -1; }
+.pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 16px; }
 .actions, .toolbar { display: flex; gap: 9px; flex-wrap: wrap; }
 .align-end { align-items: end; }
 .button { border: 0; border-radius: 10px; height: 42px; padding: 0 17px; font-weight: 700; cursor: pointer; white-space: nowrap; }
