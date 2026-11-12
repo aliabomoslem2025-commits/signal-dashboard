@@ -1,22 +1,64 @@
-# Dashboard API contract
+# Local device-auth and dashboard API
 
-The static dashboard uses same-origin requests to the Signal server reverse-proxied at `/v1/`. All management calls carry the administrator credential in `X-Local-Admin-Token`. The browser keeps the token in `sessionStorage` only for the current tab session; this is not a substitute for a trusted management network and HTTPS.
+The dashboard is a static, dependency-free RTL web app. Nginx proxies the same-origin `/v1/` routes to the private Signal server listener. Every admin endpoint requires:
 
-## Current server endpoints
+```http
+Authorization: Bearer <LOCAL_AUTH_ADMIN_TOKEN>
+```
 
-- `POST /v1/admin/device-enrollments` — JSON: `{ "number": "+4915112345678", "androidId": "...", "enabled": true }`
-- `GET /v1/admin/device-enrollments` — list enrollment rows. The server returns the keyed hash of the Android ID, not the raw identifier.
-- `DELETE /v1/admin/device-enrollments` — JSON body with `number` and the original `androidId`.
+The token is supplied at runtime and stored only in the current tab's `sessionStorage`; it must never be committed or embedded in the APK.
 
-The existing server implementation upserts an enrollment on POST. To toggle an existing enrollment, the administrator must submit the original Android ID. Revocation also requires the original Android ID. A later API revision should add an opaque enrollment ID and allow changes by that ID so the dashboard never needs to ask an administrator to re-enter the original Android ID.
+## Device management
 
-## Operational notes
+### Create a pre-authorized device
 
-1. Enable `localDeviceAuth` in the server configuration.
-2. Provision a dedicated DynamoDB table with partition key `P` (String) and sort key `S` (String); enable TTL on attribute `ttl`.
-3. Configure `localDeviceAuth.tableName`, `adminApiToken`, and `androidIdHmacKey` using the server's secret store.
-4. Restrict the dashboard port to the management VLAN. Do not publish it to the Internet.
-5. Terminate HTTPS at a trusted reverse proxy and configure `SIGNAL_SERVER_UPSTREAM` to the private HTTP listener behind that proxy.
-6. Rotate the administrator token and HMAC key through a controlled maintenance procedure. Rotating the HMAC key requires re-enrolling Android ID bindings.
+`POST /v1/local-auth/admin/devices`
 
-The local one-time code is a server-side registration hand-off returned to the already-connected client. It is not an independent second factor and does not prove possession of a phone number. Authorization currently depends on the administrator-created number/Android-ID binding. A production deployment should add an enrolled Android Keystore public key and signed challenge before treating a device as cryptographically authenticated.
+```json
+{
+  "phoneNumber": "+4915112345678",
+  "androidId": "android-id-from-device",
+  "publicKey": "BASE64_X509_EC_P256_PUBLIC_KEY",
+  "displayName": "Warehouse phone"
+}
+```
+
+### List devices
+
+`GET /v1/local-auth/admin/devices?limit=50&q=warehouse&cursor=...`
+
+Returns `devices` and `nextCursor`. Device objects contain the phone number, Android ID, public key, display name, enabled state, created/updated timestamps and last-seen timestamp. Protect this endpoint as sensitive administrator data.
+
+### Update / disable
+
+`PUT /v1/local-auth/admin/devices/{phoneNumber}/{androidId}`
+
+```json
+{ "enabled": false }
+```
+
+### Revoke
+
+`DELETE /v1/local-auth/admin/devices/{phoneNumber}/{androidId}`
+
+### Recent events
+
+`GET /v1/local-auth/admin/events?limit=100`
+
+## Client registration protocol
+
+- `POST /v1/local-auth/challenge` with `{ phoneNumber, androidId }`
+- `POST /v1/local-auth/verify` with `{ challengeId, signature }`
+- `POST /v1/local-auth/submit-code` with `{ phoneNumber, registrationSessionId, code }`
+
+The app generates an EC P-256 key in Android Keystore and signs the server nonce. The corresponding public key must be pre-provisioned by an administrator. The server returns a one-time compatibility code only after signature verification, and the existing Signal account-registration verifier accepts the session only after the code is submitted.
+
+## Deployment
+
+1. Create the local-auth table using the server repository's `deploy/local-auth/create-table.sh`. The table requires string partition/sort keys `PK` and `SK`; TTL is enabled on `expiresAt`.
+2. Configure `LOCAL_AUTH_TABLE` (optional; default `signal_local_device_auth`) and `LOCAL_AUTH_ADMIN_TOKEN` on the server.
+3. Restrict `/v1/local-auth/admin/*` to the management network at the firewall or reverse proxy.
+4. Set `SIGNAL_SERVER_UPSTREAM` to the private server listener and run `docker compose up -d --build`.
+5. Put a trusted HTTPS reverse proxy in front of the dashboard. Do not expose the admin UI on the public Internet.
+
+Android ID is an enrollment lookup value, not a secret. The ECDSA proof of possession of the enrolled Android Keystore public key is the cryptographic device authentication factor.
