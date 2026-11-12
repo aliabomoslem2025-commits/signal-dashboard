@@ -2,7 +2,7 @@
   "use strict";
 
   const $ = (id) => document.getElementById(id);
-  const state = { apiBase: "", token: "", devices: [] };
+  const state = { apiBase: "", token: "", devices: [], cursor: null, query: "" };
   const storedBase = sessionStorage.getItem("signalDashboard.apiBase");
   if (storedBase) $("api-base").value = storedBase;
 
@@ -21,9 +21,11 @@
 
   function validateBase(value) {
     const parsed = new URL(value);
-    if (!["https:", "http:"].includes(parsed.protocol)) throw new Error("نشانی سرور معتبر نیست.");
     if (parsed.protocol !== "https:" && !["localhost", "127.0.0.1"].includes(parsed.hostname)) {
-      throw new Error("برای اتصال غیرمحلی باید از HTTPS استفاده شود.");
+      throw new Error("برای دسترسی شبکه‌ای باید از HTTPS استفاده شود.");
+    }
+    if (parsed.username || parsed.password || parsed.search || parsed.hash) {
+      throw new Error("نشانی API نباید دارای نام کاربری، رمز، query یا fragment باشد.");
     }
     return parsed.origin;
   }
@@ -35,7 +37,7 @@
       headers: {
         "Accept": "application/json",
         "Content-Type": "application/json",
-        "X-Local-Admin-Token": state.token,
+        "Authorization": "Bearer " + state.token,
         ...(options.headers || {})
       },
       cache: "no-store",
@@ -43,43 +45,45 @@
     });
     if (!response.ok) {
       const body = await response.text().catch(() => "");
-      if (response.status === 401 || response.status === 403) {
-        setConnection(false, "اعتبار دسترسی نامعتبر");
-      }
-      throw new Error(body ? "خطای سرور (" + response.status + "): " + body.slice(0, 240) : "درخواست ناموفق بود (" + response.status + ").");
+      if (response.status === 401 || response.status === 403) setConnection(false, "توکن نامعتبر");
+      throw new Error(body ? "خطای سرور (" + response.status + "): " + body.slice(0, 220) : "درخواست ناموفق بود (" + response.status + ").");
     }
     if (response.status === 204) return null;
     const text = await response.text();
     return text ? JSON.parse(text) : null;
   }
 
-  function renderRows() {
-    const query = $("search-input").value.trim().toLowerCase();
-    const filtered = state.devices.filter((d) => String(d.number || "").toLowerCase().includes(query));
+  function mask(value) {
+    const text = String(value || "");
+    return text.length > 8 ? text.slice(0, 4) + "…" + text.slice(-3) : text || "—";
+  }
+
+  function renderDevices() {
     $("device-count").textContent = String(state.devices.length);
     const tbody = $("device-rows");
     tbody.replaceChildren();
-    if (!filtered.length) {
+    if (!state.devices.length) {
       const row = document.createElement("tr");
       const cell = document.createElement("td");
-      cell.colSpan = 5;
+      cell.colSpan = 6;
       cell.className = "empty";
-      cell.textContent = state.devices.length ? "موردی با این جستجو پیدا نشد." : "هنوز دستگاهی ثبت نشده است.";
+      cell.textContent = "دستگاهی در این صفحه پیدا نشد.";
       row.append(cell);
       tbody.append(row);
       return;
     }
-    for (const device of filtered) {
+    for (const device of state.devices) {
       const row = document.createElement("tr");
-      const number = document.createElement("td");
-      number.textContent = device.number || "—";
-      const hash = document.createElement("td");
-      hash.className = "code";
-      const rawHash = String(device.deviceHash || "");
-      hash.textContent = rawHash ? rawHash.slice(0, 12) + "…" : "—";
-      hash.title = rawHash;
-      const created = document.createElement("td");
-      created.textContent = device.createdAt ? new Date(Number(device.createdAt) * 1000).toLocaleString() : "—";
+      const name = document.createElement("td");
+      name.textContent = device.displayName || "—";
+      const phone = document.createElement("td");
+      phone.textContent = device.phoneNumber || "—";
+      const android = document.createElement("td");
+      android.className = "code";
+      android.textContent = mask(device.androidId);
+      android.title = device.androidId || "";
+      const seen = document.createElement("td");
+      seen.textContent = device.lastSeenAt ? new Date(Number(device.lastSeenAt) * 1000).toLocaleString() : "هرگز";
       const status = document.createElement("td");
       const pill = document.createElement("span");
       pill.className = "state " + (device.enabled ? "enabled" : "disabled");
@@ -89,7 +93,7 @@
       const toggle = document.createElement("button");
       toggle.className = "table-action";
       toggle.textContent = device.enabled ? "غیرفعال‌سازی" : "فعال‌سازی";
-      toggle.addEventListener("click", () => toggleDevice(device));
+      toggle.addEventListener("click", () => updateDevice(device, { enabled: !device.enabled }));
       actions.append(toggle);
       const revoke = document.createElement("button");
       revoke.className = "table-action danger";
@@ -97,50 +101,81 @@
       revoke.textContent = "لغو مجوز";
       revoke.addEventListener("click", () => revokeDevice(device));
       actions.append(revoke);
-      row.append(number, hash, created, status, actions);
+      row.append(name, phone, android, seen, status, actions);
       tbody.append(row);
     }
   }
 
-  async function refresh() {
-    const records = await api("/v1/admin/device-enrollments", { method: "GET" });
-    state.devices = Array.isArray(records) ? records : [];
-    renderRows();
+  function devicePath(device) {
+    return "/v1/local-auth/admin/devices/" +
+      encodeURIComponent(device.phoneNumber) + "/" + encodeURIComponent(device.androidId);
+  }
+
+  async function refreshDevices(append = false) {
+    const query = $("search-input").value.trim();
+    if (!append) {
+      state.devices = [];
+      state.cursor = null;
+      state.query = query;
+    }
+    const params = new URLSearchParams({ limit: "50", q: state.query });
+    if (append && state.cursor) params.set("cursor", state.cursor);
+    const page = await api("/v1/local-auth/admin/devices?" + params.toString(), { method: "GET" });
+    state.devices = append ? state.devices.concat(page.devices || []) : (page.devices || []);
+    state.cursor = page.nextCursor || null;
+    $("load-more-button").disabled = !state.cursor;
+    $("page-caption").textContent = state.cursor ? "نتایج بیشتر موجود است." : "به انتهای فهرست رسیدید.";
+    renderDevices();
     setConnection(true, "متصل");
   }
 
-  async function toggleDevice(device) {
-    const nextEnabled = !device.enabled;
-    try {
-      await api("/v1/admin/device-enrollments", {
-        method: "POST",
-        body: JSON.stringify({
-          number: device.number,
-          androidId: $("android-id").value.trim() || "",
-          enabled: nextEnabled
-        })
-      });
-      showMessage("وضعیت دستگاه تغییر کرد. برای دستگاه‌های موجود، Android ID اصلی را برای به‌روزرسانی لازم است وارد کنید.", "success");
-      await refresh();
-    } catch (error) {
-      showMessage(error.message, "error");
+  async function refreshEvents() {
+    const result = await api("/v1/local-auth/admin/events?limit=100", { method: "GET" });
+    const events = result.events || [];
+    const tbody = $("event-rows");
+    tbody.replaceChildren();
+    if (!events.length) {
+      const row = document.createElement("tr");
+      const cell = document.createElement("td");
+      cell.colSpan = 5;
+      cell.className = "empty";
+      cell.textContent = "رویدادی ثبت نشده است.";
+      row.append(cell);
+      tbody.append(row);
+      return;
+    }
+    for (const event of events) {
+      const row = document.createElement("tr");
+      const time = document.createElement("td");
+      time.textContent = event.createdAt ? new Date(Number(event.createdAt) * 1000).toLocaleString() : "—";
+      const type = document.createElement("td");
+      type.textContent = event.type || "—";
+      const number = document.createElement("td");
+      number.textContent = event.phoneNumber || "—";
+      const android = document.createElement("td");
+      android.textContent = mask(event.androidId);
+      const success = document.createElement("td");
+      success.textContent = event.success ? "موفق" : "ناموفق";
+      row.append(time, type, number, android, success);
+      tbody.append(row);
     }
   }
 
+  async function updateDevice(device, fields) {
+    try {
+      await api(devicePath(device), { method: "PUT", body: JSON.stringify(fields) });
+      showMessage("اطلاعات دستگاه به‌روزرسانی شد.", "success");
+      await refreshDevices();
+    } catch (error) { showMessage(error.message, "error"); }
+  }
+
   async function revokeDevice(device) {
-    const androidId = window.prompt("برای لغو مجوز، Android ID اصلی این دستگاه را وارد کنید:");
-    if (!androidId) return;
     if (!window.confirm("مجوز این دستگاه به‌طور کامل حذف شود؟")) return;
     try {
-      await api("/v1/admin/device-enrollments", {
-        method: "DELETE",
-        body: JSON.stringify({ number: device.number, androidId, enabled: false })
-      });
+      await api(devicePath(device), { method: "DELETE" });
       showMessage("مجوز دستگاه حذف شد.", "success");
-      await refresh();
-    } catch (error) {
-      showMessage(error.message, "error");
-    }
+      await refreshDevices();
+    } catch (error) { showMessage(error.message, "error"); }
   }
 
   $("connection-form").addEventListener("submit", async (event) => {
@@ -149,7 +184,7 @@
       state.apiBase = validateBase($("api-base").value.trim());
       state.token = $("admin-token").value.trim();
       if (!state.token) throw new Error("توکن مدیریتی را وارد کنید.");
-      await refresh();
+      await Promise.all([refreshDevices(), refreshEvents()]);
       sessionStorage.setItem("signalDashboard.apiBase", state.apiBase);
       showMessage("اتصال به سرور برقرار شد.", "success");
     } catch (error) {
@@ -162,42 +197,49 @@
     state.apiBase = "";
     state.token = "";
     state.devices = [];
+    state.cursor = null;
     $("admin-token").value = "";
     sessionStorage.removeItem("signalDashboard.apiBase");
-    renderRows();
+    renderDevices();
     setConnection(false, "متصل نیست");
     showMessage("اطلاعات اتصال از نشست مرورگر پاک شد.");
   });
 
   $("enroll-form").addEventListener("submit", async (event) => {
     event.preventDefault();
-    const number = $("phone-number").value.trim();
+    const phoneNumber = $("phone-number").value.trim();
     const androidId = $("android-id").value.trim();
-    if (!/^\+[1-9][0-9]{7,14}$/.test(number)) {
+    const publicKey = $("public-key").value.replace(/\s+/g, "");
+    const displayName = $("device-name").value.trim();
+    if (!/^\+[1-9][0-9]{7,14}$/.test(phoneNumber)) {
       showMessage("شماره را با قالب E.164 وارد کنید؛ برای نمونه ‎+4915112345678.", "error");
       return;
     }
-    if (androidId.length < 4) {
-      showMessage("Android ID واردشده معتبر به نظر نمی‌رسد.", "error");
+    if (!androidId || androidId.length > 128) {
+      showMessage("Android ID معتبر وارد کنید.", "error");
+      return;
+    }
+    if (!/^[A-Za-z0-9+/]+={0,2}$/.test(publicKey) || publicKey.length < 80) {
+      showMessage("کلید عمومی Base64 X.509 را بررسی کنید.", "error");
       return;
     }
     try {
-      await api("/v1/admin/device-enrollments", {
+      await api("/v1/local-auth/admin/devices", {
         method: "POST",
-        body: JSON.stringify({ number, androidId, enabled: $("device-enabled").checked })
+        body: JSON.stringify({ phoneNumber, androidId, publicKey, displayName })
       });
       showMessage("دستگاه با موفقیت ثبت شد.", "success");
-      await refresh();
-    } catch (error) {
-      showMessage(error.message, "error");
-    }
+      $("public-key").value = "";
+      await refreshDevices();
+    } catch (error) { showMessage(error.message, "error"); }
   });
 
-  $("search-input").addEventListener("input", renderRows);
-  $("refresh-button").addEventListener("click", async () => {
-    try { await refresh(); showMessage("فهرست به‌روز شد."); }
-    catch (error) { showMessage(error.message, "error"); }
+  $("search-input").addEventListener("keydown", (event) => {
+    if (event.key === "Enter") refreshDevices().catch((error) => showMessage(error.message, "error"));
   });
+  $("refresh-button").addEventListener("click", () => refreshDevices().catch((error) => showMessage(error.message, "error")));
+  $("events-refresh-button").addEventListener("click", () => refreshEvents().catch((error) => showMessage(error.message, "error")));
+  $("load-more-button").addEventListener("click", () => refreshDevices(true).catch((error) => showMessage(error.message, "error")));
 
-  renderRows();
+  renderDevices();
 })();
