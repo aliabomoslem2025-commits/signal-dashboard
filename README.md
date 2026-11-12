@@ -1,30 +1,35 @@
 # Signal Local Administration Dashboard
 
-This repository provides a lightweight, RTL, LAN-only web console for managing pre-authorized phone-number / Android-ID pairs through the customized Signal server's local device-auth API.
+A lightweight, RTL, LAN-only dashboard for pre-authorizing Signal Android devices and reviewing local-authentication events. It has no external script, style, font, analytics or CDN dependencies.
 
 ## Run
 
-1. Configure the server's `localDeviceAuth` section and create the required DynamoDB table (see [API and server setup](docs/API.md)).
-2. Set the private server listener:
-   ```bash
-   export SIGNAL_SERVER_UPSTREAM=http://192.168.10.20:8080
-   export DASHBOARD_PORT=8090
-   docker compose up -d --build
-   ```
-3. Put a trusted HTTPS reverse proxy in front of the dashboard container and expose it only on the management LAN.
-4. Open the dashboard, enter the internal server URL (usually the dashboard's same origin) and the admin token.
+Configure the private Signal server listener and start the dashboard:
 
-The dashboard has no external JavaScript, CSS, font, analytics, or CDN dependencies. The admin token is held in the current browser tab's `sessionStorage` and sent using `X-Local-Admin-Token`.
+```bash
+export SIGNAL_SERVER_UPSTREAM=http://192.168.10.20:8080
+export DASHBOARD_PORT=8090
+docker compose up -d --build
+```
 
-## Current capabilities
+Place a trusted HTTPS reverse proxy in front of the dashboard and expose it only on the management VLAN. Open the dashboard and enter the dashboard's same-origin URL plus `LOCAL_AUTH_ADMIN_TOKEN`.
 
-- Add or update an enrolled phone / Android-ID pair.
-- List enrolled devices and search by phone number.
-- Disable or re-enable an entry when the administrator supplies its original Android ID.
-- Revoke an enrollment.
+## Provisioning flow
 
-## Security and functionality boundaries
+1. On the Android device, generate the local device key in Android Keystore.
+2. Retrieve the Base64 X.509 P-256 public key from the app's device-key provisioning screen/tool.
+3. In the dashboard, enter the phone number, Android ID and public key.
+4. The app can then complete a signed challenge; the private key never leaves Android Keystore.
 
-Android ID is an enrollment identifier, not a cryptographic secret. The present server endpoint checks the pre-provisioned phone-number / Android-ID pair but does not yet prove possession of a registered Android Keystore key. The local verification code is returned over the same TLS session as a hand-off to the existing Signal registration flow; it is not an out-of-band factor.
+## Dashboard features
 
-This dashboard does not make the complete Signal deployment LAN-only by itself. FoundationDB, DynamoDB-compatible storage, Redis, local object storage, TLS, calling infrastructure, push delivery, CDSI, SVR, key transparency, and other enabled services still need deployment-specific configuration. See [API and operational notes](docs/API.md).
+- Create device bindings with phone, Android ID and public key.
+- Search and paginate through enrolled devices.
+- Enable, disable and revoke device bindings.
+- View recent security events and last device activity.
+
+See [docs/API.md](docs/API.md) for request schemas and server setup.
+
+## Security boundary
+
+Android ID alone is not treated as a secret or authentication factor. Enrollment is matched by phone and Android ID, then possession of the device's enrolled EC P-256 key is proven by signature. The admin bearer token must remain server-side and must not be built into web assets or the APK.
