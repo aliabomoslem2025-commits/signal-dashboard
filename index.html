@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>داشبورد مدیریت سیگنال محلی</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">LOCAL LAN ADMINISTRATION</div>
+        <h1>مدیریت کاربران و دستگاه‌ها</h1>
+        <p class="muted">ثبت و لغو مجوز دستگاه‌هایی که اجازه ورود به پیام‌رسان داخلی را دارند.</p>
+      </div>
+      <span class="badge">شبکه محلی</span>
+    </header>
+
+    <section class="panel connection-panel" aria-labelledby="connection-title">
+      <div class="panel-heading">
+        <div>
+          <h2 id="connection-title">اتصال امن به سرور</h2>
+          <p class="muted">نشانی API و توکن مدیریتی فقط در نشست فعلی مرورگر نگهداری می‌شوند.</p>
+        </div>
+        <span id="connection-status" class="status status-idle">متصل نیست</span>
+      </div>
+      <form id="connection-form" class="grid connection-grid">
+        <label>نشانی سرور
+          <input id="api-base" type="url" placeholder="https://signal-server.lan" autocomplete="url" required>
+        </label>
+        <label>توکن مدیریتی
+          <input id="admin-token" type="password" placeholder="توکن تعریف‌شده در localDeviceAuth.adminApiToken" autocomplete="off" required>
+        </label>
+        <div class="actions align-end">
+          <button class="button primary" type="submit">اتصال و بارگذاری</button>
+          <button class="button secondary" id="disconnect-button" type="button">پاک‌کردن اطلاعات</button>
+        </div>
+      </form>
+      <div class="notice">این داشبورد را فقط روی شبکه مدیریت داخلی و پشت HTTPS در دسترس قرار دهید. توکن مدیریتی را در فایل‌های وب، مخزن Git یا تنظیمات عمومی قرار ندهید.</div>
+    </section>
+
+    <section class="panel" aria-labelledby="enroll-title">
+      <div class="panel-heading">
+        <div>
+          <h2 id="enroll-title">ثبت دستگاه مجاز</h2>
+          <p class="muted">شماره باید با قالب بین‌المللی E.164 وارد شود؛ مانند ‎+4915112345678.</p>
+        </div>
+      </div>
+      <form id="enroll-form" class="grid enroll-grid">
+        <label>شماره تلفن
+          <input id="phone-number" type="tel" inputmode="tel" placeholder="+4915112345678" autocomplete="off" required>
+        </label>
+        <label>Android ID
+          <input id="android-id" type="text" spellcheck="false" autocomplete="off" placeholder="شناسه Android دستگاه" required>
+        </label>
+        <label class="checkbox-label">
+          <input id="device-enabled" type="checkbox" checked>
+          دستگاه پس از ثبت فعال باشد
+        </label>
+        <div class="actions align-end">
+          <button class="button primary" type="submit">ثبت دستگاه</button>
+        </div>
+      </form>
+      <p class="help">Android ID مانند رمز عبور محرمانه نیست و قابل جعل یا تغییر است. این سامانه آن را به‌صورت HMAC در دیتابیس ذخیره می‌کند؛ برای امنیت قوی‌تر باید احراز مالکیت با کلید Android Keystore نیز به جریان کلاینت و سرور اضافه و کلید عمومی در زمان enrollment ثبت شود.</p>
+    </section>
+
+    <section class="panel" aria-labelledby="devices-title">
+      <div class="panel-heading devices-heading">
+        <div>
+          <h2 id="devices-title">فهرست دستگاه‌های مجاز</h2>
+          <p class="muted"><span id="device-count">۰</span> دستگاه ثبت‌شده</p>
+        </div>
+        <div class="toolbar">
+          <input id="search-input" type="search" placeholder="جستجو بر اساس شماره..." aria-label="جستجوی شماره">
+          <button class="button secondary" id="refresh-button" type="button">بازخوانی</button>
+        </div>
+      </div>
+      <div id="message" class="message" role="status" aria-live="polite" hidden></div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>شماره</th>
+              <th>شناسه دستگاه (هش‌شده)</th>
+              <th>تاریخ ثبت</th>
+              <th>وضعیت</th>
+              <th>عملیات</th>
+            </tr>
+          </thead>
+          <tbody id="device-rows">
+            <tr><td colspan="5" class="empty">برای مشاهده دستگاه‌ها به سرور متصل شوید.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer class="footer">Signal Local Dashboard · دسترسی مدیریتی را محدود و لاگ‌های سرور را به‌صورت دوره‌ای بررسی کنید.</footer>
+  </main>
+</body>
+</html>
