@@ -123,10 +123,21 @@ export class LocalAuthApi {
 }
 
 export function validateBaseUrl(value: string): string {
-  const parsed = new URL(value.trim());
-  if (parsed.protocol !== "https:" && parsed.hostname !== "localhost" && parsed.hostname !== "127.0.0.1") {
+  let parsed: URL;
+  try {
+    parsed = new URL(value.trim());
+  } catch {
+    throw new Error("آدرس پایه سرویس معتبر نیست.");
+  }
+
+  const loopbackHosts = new Set(["localhost", "127.0.0.1", "[::1]"]);
+  const isLoopbackHttp = parsed.protocol === "http:" && loopbackHosts.has(parsed.hostname);
+  if (parsed.protocol !== "https:" && !isLoopbackHttp) {
     throw new Error("آدرس سرویس باید HTTPS باشد؛ HTTP فقط برای localhost مجاز است.");
   }
   if (parsed.username || parsed.password) throw new Error("قرار دادن نام کاربری یا رمز در URL مجاز نیست.");
-  return parsed.toString().replace(/\/$/, "");
+  if (parsed.pathname !== "/" || parsed.search || parsed.hash) {
+    throw new Error("فقط آدرس پایه سرویس (بدون مسیر، پارامتر یا fragment) وارد کنید.");
+  }
+  return parsed.origin;
 }

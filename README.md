@@ -30,8 +30,10 @@ The container listens on port 8088 and proxies local-auth requests to `local-aut
 ## Device enrollment
 
 1. Add the phone number in the dashboard.
-2. In the Android app, use **Local server setup → Export device enrollment**.
-3. Paste its Android ID and public ECDSA P-256 public key into the dashboard's **Register device** form.
+2. In the Android app, use **Local server setup → Copy device enrollment information**.
+3. Open the user's **Register device** form, paste the copied JSON bundle into the import box, and choose **Read JSON information**. Android ID and the public ECDSA P-256 key will be filled automatically. Manual entry remains available.
 4. The app can now request a signed challenge for that phone/device binding.
 
-Only the public key is uploaded. The private key stays in Android Keystore.
+The bundle has `formatVersion: 1`, `androidId`, and `publicKeyPem`. Only the public key is uploaded; the private key stays in Android Keystore and must never be copied or uploaded.
+
+For an offline LAN, the dashboard does not load fonts or scripts from public CDNs. Use the same-origin reverse-proxy setup in [docs/API.md](docs/API.md), or configure the exact dashboard origin in the sidecar's `LOCAL_AUTH_ALLOWED_ORIGINS` when the API uses a separate HTTPS hostname.
