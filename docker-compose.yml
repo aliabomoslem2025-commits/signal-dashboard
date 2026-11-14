@@ -1,0 +1,14 @@
+services:
+  signal-dashboard:
+    build: .
+    container_name: signal-dashboard
+    restart: unless-stopped
+    ports:
+      - "${DASHBOARD_BIND_IP:-127.0.0.1}:${DASHBOARD_PORT:-8088}:8088"
+    networks:
+      - local-auth-network
+
+networks:
+  local-auth-network:
+    external: true
+    name: ${LOCAL_AUTH_DOCKER_NETWORK:-local-auth_private}
