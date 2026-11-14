@@ -22,6 +22,8 @@ Authorization: Bearer <LOCAL_AUTH_ADMIN_TOKEN>
 | GET | `/v1/local-auth/admin/users/{phone}/devices` | List enrolled devices |
 | POST | `/v1/local-auth/admin/users/{phone}/devices` | Enroll Android ID and ECDSA P-256 public key |
 | DELETE | `/v1/local-auth/admin/devices/{deviceId}` | Revoke a device |
+| PATCH | `/v1/local-auth/admin/user-status/{phone}` | Enable or disable a user; body: `{"active":false}` |
+| GET | `/v1/local-auth/admin/events?limit=50` | Read the newest administrative audit events (limit 1–100) |
 
 Device-enrollment request:
 
