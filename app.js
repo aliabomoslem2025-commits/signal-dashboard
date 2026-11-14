@@ -144,17 +144,17 @@
     if (selectedUser) {
       const statusButton = document.createElement("button");
       statusButton.className = selectedUser.active ? "danger small" : "primary small";
-      statusButton.textContent = selectedUser.active ? "Disable user" : "Enable user";
+      statusButton.textContent = selectedUser.active ? "Block new sign-ins" : "Allow new sign-ins";
       statusButton.addEventListener("click", async () => {
         const nextActive = !selectedUser.active;
-        const action = nextActive ? "enable" : "disable";
-        if (!confirm("Are you sure you want to " + action + " " + phone + "?")) return;
+        const action = nextActive ? "allow new sign-ins for" : "block new sign-ins for";
+        if (!confirm("Are you sure you want to " + action + " " + phone + "? Existing Signal sessions are not terminated by this action.")) return;
         try {
           await request("/v1/local-auth/admin/user-status/" + encodeURIComponent(phone), {
             method: "PATCH",
             body: JSON.stringify({ active: nextActive })
           });
-          notify("User " + (nextActive ? "enabled." : "disabled.") + " Existing device enrollments were preserved.");
+          notify("Future local device sign-ins " + (nextActive ? "allowed." : "blocked.") + " Existing Signal sessions remain active.");
           await loadUsers();
         } catch (error) {
           notify(error.message, true);
