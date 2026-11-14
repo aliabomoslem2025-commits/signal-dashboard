@@ -16,10 +16,10 @@ Place a trusted HTTPS reverse proxy in front of the dashboard and expose it only
 
 ## Provisioning flow
 
-1. On the Android device, generate the local device key in Android Keystore.
-2. Retrieve the Base64 X.509 P-256 public key from the app's device-key provisioning screen/tool.
-3. In the dashboard, enter the phone number, Android ID and public key.
-4. The app can then complete a signed challenge; the private key never leaves Android Keystore.
+1. On the Android phone's pre-registration screen, enter the phone number and choose **Enroll device**.
+2. Copy the generated JSON containing the E.164 phone number, Android ID, display name and Base64 X.509 P-256 public key.
+3. In the dashboard, enter those fields to create the device binding.
+4. The user can then return to registration and complete the signed challenge; the private key never leaves Android Keystore.
 
 ## Dashboard features
 
