@@ -63,3 +63,8 @@ Set `LOCAL_AUTH_ALLOWED_ORIGINS=https://dashboard.lan` in the sidecar's protecte
 - Do not paste the admin token into a shared or untrusted browser.
 - Android ID is a lookup attribute only. The sidecar also requires a valid ECDSA signature from the enrolled Android Keystore key.
 - Disabling or revoking a device in the dashboard immediately prevents it from requesting new challenges and makes its outstanding tickets unusable at ticket validation time.
+
+
+### Scope of user/device revocation
+
+Disabling a user or revoking a device in this dashboard blocks future Local Device Authentication challenges and consumes outstanding registration tickets. It does **not** remotely terminate an already-authenticated Signal WebSocket/session or delete the device from the underlying Signal account. Existing Signal sessions must be signed out/revoked through a separate Signal account-administration mechanism if immediate remote logout is required.
