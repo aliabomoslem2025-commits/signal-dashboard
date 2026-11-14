@@ -1,13 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import {
-  AdminEvent,
-  ApiError,
-  Device,
-  LocalAuthApi,
-  User,
-  validateBaseUrl
-} from "./api";
+import { ApiError, LocalAuthApi, validateBaseUrl } from "./api";
+import type { AdminEvent, Device, User } from "./api";
 
 type Tab = "users" | "events";
 const DEFAULT_API = localStorage.getItem("signal.localAuth.api") || "https://auth.lan";
