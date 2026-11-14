@@ -175,9 +175,9 @@
       <button class="primary" type="submit">Enroll device</button>
       <p class="help">In the app, choose Copy device enrollment information, paste the JSON above, and click Import. The private key is never included or exported.</p>
     `;
-    $("importDeviceEnrollment").addEventListener("click", () => {
+    form.querySelector("#importDeviceEnrollment").addEventListener("click", () => {
       try {
-        const bundle = JSON.parse($("deviceEnrollmentBundle").value);
+        const bundle = JSON.parse(form.querySelector("#deviceEnrollmentBundle").value);
         if (bundle.formatVersion !== 1 ||
             typeof bundle.androidId !== "string" ||
             typeof bundle.publicKeyPem !== "string" ||
@@ -185,8 +185,8 @@
             !bundle.publicKeyPem.includes("-----END PUBLIC KEY-----")) {
           throw new Error("The JSON must contain a version 1 Android ID and public key PEM.");
         }
-        $("newAndroidId").value = bundle.androidId.trim();
-        $("newPublicKey").value = bundle.publicKeyPem.trim();
+        form.querySelector("#newAndroidId").value = bundle.androidId.trim();
+        form.querySelector("#newPublicKey").value = bundle.publicKeyPem.trim();
         notify("Device ID and public key imported. The private key is not part of this bundle.");
       } catch (error) {
         notify("Invalid enrollment JSON: " + error.message, true);
