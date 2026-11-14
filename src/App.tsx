@@ -347,15 +347,51 @@ function EnrollDeviceForm({ phone, busy, onCancel, onSubmit }: { phone: string; 
   const [androidId, setAndroidId] = useState("");
   const [publicKey, setPublicKey] = useState("");
   const [label, setLabel] = useState("");
+  const [enrollmentJson, setEnrollmentJson] = useState("");
   const [formError, setFormError] = useState("");
+
+  const importEnrollment = () => {
+    setFormError("");
+    try {
+      const parsed = JSON.parse(enrollmentJson) as Record<string, unknown>;
+      const forbiddenField = Object.keys(parsed).find(key => /private|secret|token|password/i.test(key));
+      if (forbiddenField) {
+        throw new Error("اطلاعات محرمانه یا کلید خصوصی نباید در بسته ثبت دستگاه وجود داشته باشد.");
+      }
+      if (parsed.formatVersion !== 1) {
+        throw new Error("نسخه بسته ثبت دستگاه پشتیبانی نمی‌شود؛ خروجی نسخه ۱ اپ را وارد کنید.");
+      }
+      if (typeof parsed.androidId !== "string" || typeof parsed.publicKeyPem !== "string") {
+        throw new Error("فایل باید شامل androidId و publicKeyPem معتبر باشد.");
+      }
+      setAndroidId(parsed.androidId.trim());
+      setPublicKey(parsed.publicKeyPem.trim());
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "فایل JSON ثبت دستگاه معتبر نیست.");
+    }
+  };
+
   return <form className="modal-form" onSubmit={async e => {
     e.preventDefault();
-    if (androidId.trim().length < 4) { setFormError("Android ID معتبر وارد کنید."); return; }
-    if (!publicKey.includes("-----BEGIN PUBLIC KEY-----") || !publicKey.includes("-----END PUBLIC KEY-----")) { setFormError("کلید عمومی PEM کامل نیست."); return; }
+    if (androidId.trim().length < 4 || androidId.trim().length > 256) {
+      setFormError("Android ID باید بین ۴ تا ۲۵۶ نویسه باشد.");
+      return;
+    }
+    if (!publicKey.includes("-----BEGIN PUBLIC KEY-----") || !publicKey.includes("-----END PUBLIC KEY-----")) {
+      setFormError("کلید عمومی PEM کامل نیست.");
+      return;
+    }
+    if (publicKey.length > 8192) {
+      setFormError("اندازه کلید عمومی بیشتر از حد مجاز است.");
+      return;
+    }
     try { await onSubmit(androidId.trim(), publicKey.trim(), label.trim()); } catch (err) { setFormError(errorText(err)); }
   }}>
-    <div className="security-note">شماره مقصد: <b dir="ltr">{phone}</b><br/>اطلاعات زیر را از گزینه «اطلاعات ثبت دستگاه» در اپ دریافت کنید. فقط کلید عمومی را وارد کنید؛ هرگز کلید خصوصی را ارسال نکنید.</div>
-    <label>Android ID</label><input dir="ltr" value={androidId} onChange={e => setAndroidId(e.target.value)} required />
+    <div className="security-note">شماره مقصد: <b dir="ltr">{phone}</b><br/>در اپ، گزینه «کپی اطلاعات ثبت دستگاه» را بزنید و JSON کپی‌شده را در کادر زیر وارد کنید. همچنین می‌توانید Android ID و کلید عمومی را دستی وارد کنید. کلید خصوصی هرگز نباید از دستگاه خارج شود.</div>
+    <label>بسته JSON صادرشده از اپ (نسخه ۱)</label>
+    <textarea dir="ltr" rows={7} spellCheck={false} value={enrollmentJson} onChange={e => setEnrollmentJson(e.target.value)} placeholder={'{\n  "formatVersion": 1,\n  "androidId": "...",\n  "publicKeyPem": "-----BEGIN PUBLIC KEY-----..."\n}'} />
+    <div className="form-actions"><button type="button" className="secondary" onClick={importEnrollment} disabled={!enrollmentJson.trim()}>خواندن اطلاعات JSON</button></div>
+    <label>Android ID</label><input dir="ltr" value={androidId} onChange={e => setAndroidId(e.target.value)} maxLength={256} required />
     <label>نام دستگاه</label><input value={label} onChange={e => setLabel(e.target.value)} maxLength={120} placeholder="مثلاً گوشی اصلی" />
     <label>کلید عمومی دستگاه (PEM)</label><textarea dir="ltr" rows={8} spellCheck={false} value={publicKey} onChange={e => setPublicKey(e.target.value)} placeholder={"-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"} required />
     {formError && <div className="alert error">{formError}</div>}

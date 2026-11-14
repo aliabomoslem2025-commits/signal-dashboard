@@ -46,3 +46,24 @@ By default, the published dashboard port binds to loopback. Put a trusted HTTPS 
 - Do not expose the local-auth sidecar or dashboard directly to the public Internet.
 - Restrict browser origin via the sidecar's exact `ALLOWED_ORIGINS` setting.
 - Audit events are bounded to the newest 100 records.
+
+ 
+## Android enrollment export format
+
+The Android app copies a versioned JSON bundle to the clipboard. Paste it into the device enrollment import box and select the JSON import action:
+
+~~~json
+{
+  "formatVersion": 1,
+  "androidId": "android-secure-id",
+  "publicKeyPem": "-----BEGIN PUBLIC KEY-----\\n...\\n-----END PUBLIC KEY-----"
+}
+~~~
+
+The dashboard checks the export version and fills the Android ID and public key fields. The device label is entered separately. The form also accepts manual entry for administrators who need it. Never include a private key, access token, password, or other secret in an enrollment bundle.
+
+## Same-origin reverse proxy (recommended)
+
+For the simplest and most restrictive browser policy, serve the UI and API from one HTTPS origin. Route `/` to the dashboard container on `127.0.0.1:8088` and `/v1/local-auth/` plus `/healthz` to the local-auth sidecar on `127.0.0.1:8090`. The dashboard container's internal Nginx proxy can also route these API paths when both containers share the local-auth Docker network.
+
+When using a separate HTTPS API hostname, allow the dashboard's exact origin in `LOCAL_AUTH_ALLOWED_ORIGINS`. The dashboard Content Security Policy permits HTTPS API endpoints and loopback HTTP endpoints for local development; remote plain HTTP is rejected by the UI.
