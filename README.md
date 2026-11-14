@@ -12,7 +12,7 @@ A small self-hosted control panel for pre-authorizing Signal LAN phone numbers a
 - Review the newest administrative audit events for user/device provisioning and revocation.
 - Delete a user and all of its enrolled devices.
 
-The Android app creates its private key inside Android Keystore. The administrator copies only the Android ID and public key from **Settings → Local Server → Copy device enrollment information**. Never upload or export the private key.
+The Android app creates its private key inside Android Keystore. The administrator copies the versioned JSON enrollment bundle from **Local server setup → Copy device enrollment information**, pastes it into the device form, and clicks **Import device information**. The bundle contains only Android ID and the ECDSA public key; never upload or export a private key.
 
 ## Run
 
