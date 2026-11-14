@@ -94,7 +94,7 @@
           : "";
         details.innerHTML = "<strong>" + escapeText(event.eventType) + "</strong>" +
           '<div class="device-meta">' + escapeText(event.target) + " · " + escapeText(date) + "</div>" +
-          '<div class="device-meta">Source: ' + escapeText(event.sourceIp || "unknown") +
+          '<div class="device-meta">Connection peer: ' + escapeText(event.sourceIp || "unknown") +
           escapeText(metadata) + "</div>";
         row.appendChild(details);
         root.appendChild(row);
