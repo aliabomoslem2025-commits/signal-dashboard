@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import {
   AdminEvent,
   ApiError,
@@ -163,8 +164,10 @@ export default function App() {
       if (api) await refreshUsers(api);
       if (api && selectedPhone) setDevices(await api.devices(selectedPhone));
       if (api && tab === "events") setEvents(await api.events(100));
+      return true;
     } catch (e) {
       setError(errorText(e));
+      return false;
     } finally {
       setBusy(false);
     }
@@ -293,14 +296,16 @@ export default function App() {
 
       {showCreateUser && <Modal title="افزودن کاربر" onClose={() => setShowCreateUser(false)}>
         <CreateUserForm busy={busy} onCancel={() => setShowCreateUser(false)} onSubmit={async (phone, name) => {
-          await withAction(() => api.createUser(phone, name), "کاربر ثبت شد.");
-          setShowCreateUser(false);
+          if (await withAction(() => api.createUser(phone, name), "کاربر ثبت شد.")) {
+            setShowCreateUser(false);
+          }
         }} />
       </Modal>}
       {showEnroll && selectedPhone && <Modal title="ثبت دستگاه مجاز" onClose={() => setShowEnroll(false)} wide>
         <EnrollDeviceForm phone={selectedPhone} busy={busy} onCancel={() => setShowEnroll(false)} onSubmit={async (androidId, publicKey, label) => {
-          await withAction(() => api.enrollDevice(selectedPhone, androidId, publicKey, label), "دستگاه ثبت شد.");
-          setShowEnroll(false);
+          if (await withAction(() => api.enrollDevice(selectedPhone, androidId, publicKey, label), "دستگاه ثبت شد.")) {
+            setShowEnroll(false);
+          }
         }} />
       </Modal>}
     </div>
@@ -319,7 +324,7 @@ function eventLabel(value: string): string {
   return labels[value] || value;
 }
 
-function Modal({ title, onClose, children, wide = false }: { title: string; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
+function Modal({ title, onClose, children, wide = false }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
   return <div className="modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
     <section className={wide ? "modal wide" : "modal"} role="dialog" aria-modal="true" aria-label={title}>
       <div className="modal-heading"><h2>{title}</h2><button onClick={onClose} aria-label="بستن">×</button></div>
