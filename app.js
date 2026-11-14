@@ -69,7 +69,40 @@
       $("deviceTitle").textContent = "Select a user";
       $("deviceContent").textContent = "Choose a user on the left to inspect or enroll devices.";
     }
+    await loadEvents();
     setConnected(true, "Connected");
+  }
+
+  async function loadEvents() {
+    const root = $("events");
+    try {
+      const result = await request("/v1/local-auth/admin/events?limit=25");
+      const events = result.events || [];
+      root.replaceChildren();
+      root.className = events.length ? "list" : "list empty";
+      if (!events.length) {
+        root.textContent = "No administrative events recorded yet.";
+        return;
+      }
+      for (const event of events) {
+        const row = document.createElement("div");
+        row.className = "device-row";
+        const details = document.createElement("div");
+        const date = event.createdAt ? new Date(event.createdAt).toLocaleString() : "Unknown time";
+        const metadata = event.metadata && Object.keys(event.metadata).length
+          ? " · " + JSON.stringify(event.metadata)
+          : "";
+        details.innerHTML = "<strong>" + escapeText(event.eventType) + "</strong>" +
+          '<div class="device-meta">' + escapeText(event.target) + " · " + escapeText(date) + "</div>" +
+          '<div class="device-meta">Source: ' + escapeText(event.sourceIp || "unknown") +
+          escapeText(metadata) + "</div>";
+        row.appendChild(details);
+        root.appendChild(row);
+      }
+    } catch (error) {
+      root.className = "list empty";
+      root.textContent = "Audit events unavailable: " + error.message;
+    }
   }
 
   function renderUsers() {
@@ -106,6 +139,29 @@
   function renderDevices(phone, devices) {
     const root = $("deviceContent");
     root.replaceChildren();
+
+    const selectedUser = state.users.find(user => user.phone === phone);
+    if (selectedUser) {
+      const statusButton = document.createElement("button");
+      statusButton.className = selectedUser.active ? "danger small" : "primary small";
+      statusButton.textContent = selectedUser.active ? "Disable user" : "Enable user";
+      statusButton.addEventListener("click", async () => {
+        const nextActive = !selectedUser.active;
+        const action = nextActive ? "enable" : "disable";
+        if (!confirm("Are you sure you want to " + action + " " + phone + "?")) return;
+        try {
+          await request("/v1/local-auth/admin/user-status/" + encodeURIComponent(phone), {
+            method: "PATCH",
+            body: JSON.stringify({ active: nextActive })
+          });
+          notify("User " + (nextActive ? "enabled." : "disabled.") + " Existing device enrollments were preserved.");
+          await loadUsers();
+        } catch (error) {
+          notify(error.message, true);
+        }
+      });
+      root.appendChild(statusButton);
+    }
 
     const form = document.createElement("form");
     form.className = "device-form";
@@ -186,6 +242,7 @@
   });
 
   $("refreshUsersBtn").addEventListener("click", () => loadUsers().catch(e => notify(e.message, true)));
+  $("refreshEventsBtn").addEventListener("click", () => loadEvents());
   $("clearTokenBtn").addEventListener("click", () => {
     sessionStorage.removeItem("signalLocalAuthAdminToken");
     tokenInput.value = "";
