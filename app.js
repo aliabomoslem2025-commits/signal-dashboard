@@ -167,12 +167,32 @@
     form.className = "device-form";
     form.innerHTML = `
       <h3>Enroll an authorized Android device</h3>
+      <label>Paste device enrollment JSON from the Android app<textarea id="deviceEnrollmentBundle" spellcheck="false" placeholder='{"formatVersion":1,"androidId":"...","publicKeyPem":"-----BEGIN PUBLIC KEY-----..."}'></textarea></label>
+      <button class="quiet small" id="importDeviceEnrollment" type="button">Import device information</button>
       <label>Android ID<input id="newAndroidId" autocomplete="off" minlength="4" maxlength="256" required placeholder="Android secure ID"></label>
       <label>Device label<input id="newDeviceLabel" maxlength="120" placeholder="e.g. Warehouse tablet 01"></label>
       <label>ECDSA P-256 public key (PEM)<textarea id="newPublicKey" required spellcheck="false" placeholder="-----BEGIN PUBLIC KEY-----&#10;...&#10;-----END PUBLIC KEY-----"></textarea></label>
       <button class="primary" type="submit">Enroll device</button>
-      <p class="help">Paste the public key exported by the app's Android Keystore enrollment screen. The private key must never leave the device.</p>
+      <p class="help">In the app, choose Copy device enrollment information, paste the JSON above, and click Import. The private key is never included or exported.</p>
     `;
+    $("importDeviceEnrollment").addEventListener("click", () => {
+      try {
+        const bundle = JSON.parse($("deviceEnrollmentBundle").value);
+        if (bundle.formatVersion !== 1 ||
+            typeof bundle.androidId !== "string" ||
+            typeof bundle.publicKeyPem !== "string" ||
+            !bundle.publicKeyPem.includes("-----BEGIN PUBLIC KEY-----") ||
+            !bundle.publicKeyPem.includes("-----END PUBLIC KEY-----")) {
+          throw new Error("The JSON must contain a version 1 Android ID and public key PEM.");
+        }
+        $("newAndroidId").value = bundle.androidId.trim();
+        $("newPublicKey").value = bundle.publicKeyPem.trim();
+        notify("Device ID and public key imported. The private key is not part of this bundle.");
+      } catch (error) {
+        notify("Invalid enrollment JSON: " + error.message, true);
+      }
+    });
+
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       const body = {
