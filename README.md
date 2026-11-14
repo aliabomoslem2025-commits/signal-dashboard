@@ -8,6 +8,8 @@ A small self-hosted control panel for pre-authorizing Signal LAN phone numbers a
 - List users and their active device counts.
 - Enroll an Android ID and ECDSA P-256 public key for a selected user.
 - List enrolled devices and revoke a device key.
+- Enable or disable an account without deleting its device enrollments; disabling consumes outstanding one-time registration tickets.
+- Review the newest administrative audit events for user/device provisioning and revocation.
 - Delete a user and all of its enrolled devices.
 
 The Android app creates its private key inside Android Keystore. The administrator copies only the Android ID and public key from **Settings → Local Server → Copy device enrollment information**. Never upload or export the private key.
